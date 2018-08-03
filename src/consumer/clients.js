@@ -132,7 +132,7 @@ function getQueryClient(table, connection, logEmitter) {
 
         let hasMore = true;
         client.on('error', (err) => {
-            logEmitter.emit('warn', err.measure);
+            logEmitter.emit('warn', err.message);
             hasMore = false;
         });
 
@@ -144,7 +144,7 @@ function getQueryClient(table, connection, logEmitter) {
                         cursor.read(batchSize, (err, rows) => err ? reject(err) : resolve(rows));
                     });
                 } catch (err) {
-                    logEmitter.emit('warn', err.measure);
+                    logEmitter.emit('warn', err.message);
                     return undefined;
                 }
 
