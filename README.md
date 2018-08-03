@@ -1,6 +1,6 @@
 # Postgres Streams
 
-*NOTE: Current library is in early development stage. DO NOT USE IT!
+*NOTE: The current library is in an early development stage. DO NOT USE IT!*
 
 ## Idea
 `<...>`
@@ -43,7 +43,7 @@ producer.send(JSON.stringify(event));
 const { createConnection, createConsumer } = require('pg-streams');
 
 const connection = createConnection(pgOptions);
-const consumer = createConsumer('stream-name', consumeHandler);
+const consumer = createConsumer('stream-name', connection, consumeHandler);
 
 consumer.on('error', console.error);
 consumer.on('info', console.log);
