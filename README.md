@@ -6,52 +6,75 @@
 `<...>`
 
 ## Usage
-### Install
-`$ npm i pg pg-cursor pg-streams`
+### 1. Setup PostgreSQL
+```sql
+CREATE TABLE IF NOT EXISTS pg_streams_events (
+  "position" bigserial PRIMARY KEY,
+  "stream" text NOT NULL,
+  "type" text NOT NULL,
+  "schemaVersion" serial NOT NULL,
+  "data" jsonb NOT NULL,
+  "meta" jsonb NOT NULL,
+  "createdAt" timestamp NOT NULL DEFAULT NOW()
+);
 
-### Create stream
+CREATE INDEX IF NOT EXISTS idx_pg_streams_events_stream ON pg_streams_events ("stream");
+
+CREATE OR REPLACE FUNCTION pg_streams_notify() RETURNS trigger AS $trigger$
+  DECLARE
+  BEGIN
+    PERFORM pg_notify('pg_streams', 'NEW_EVENT ' || NEW."position" || ' ' || NEW."stream");
+    RETURN NEW;
+  END;
+$trigger$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS pg_streams_insert_trigger ON pg_streams_events;
+CREATE TRIGGER pg_streams_insert_trigger AFTER INSERT ON pg_streams_events
+FOR EACH ROW EXECUTE PROCEDURE pg_streams_notify();
+```
+### 2. Install NPM module
+`$ npm i pg pg-streams`
+
+### 3. Producer
 ```js
-const { createConnection, createStreamManager } = require('pg-streams');
+const { createProducer } = require('pg-streams');
 
-const pgOptions = {
-    user: 'postgres',
-    host: 'localhost',
-    database: 'streams'
-};
-const connection = createConnection(pgOptions);
-const streamManager = createStreamManager(connection);
+const producer = createProducer({ pgOptions });
 
-streamManager.createStream('stream-name');
+producer.write({
+   stream: 'user-account',
+   type: 'created',
+   schemaVersion: 2,
+   data: {
+      name: "Bob",
+      age: 33,
+      sex: undefined
+   },
+   meta: {
+      foo: 'bar'
+   }
+});
 ```
 
-### Producer
+### 4. Consumer
 ```js
-const { createConnection, createProducer } = require('pg-streams');
+const { createConsumer } = require('pg-streams');
 
-const connection = createConnection(pgOptions);
-const producer = createProducer('stream-name', connection);
+let position = '0';
 
-const event = {
-    foo: 'bar'
-};
-
-producer.send(JSON.stringify(event));
-```
-
-### Consumer
-```js
-const { createConnection, createConsumer } = require('pg-streams');
-
-const connection = createConnection(pgOptions);
-const consumer = createConsumer('stream-name', connection, consumeHandler);
+const consumer = createConsumer({
+    pgOptions,
+    streams: ['user-account', 'user-preferences'],
+    fromPosition: position,
+    handler: async (event) => {
+      console.log(event);
+      position = event.position
+   }
+});
 
 consumer.on('error', console.error);
-consumer.on('info', console.log);
 consumer.on('warn', console.log);
+consumer.on('info', console.log);
 
-consumer.startFrom(0);
-
-async function consumeHandler(event, id) {
-    await doCoolStuff(event);
-}
+consumer.start();
 ```

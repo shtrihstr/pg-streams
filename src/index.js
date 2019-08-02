@@ -1,7 +1,4 @@
-const { createConnection } = require('./connection');
-const { createStreamManager } = require('./stream');
-const { createProducer } = require('./producer');
-const { createConsumer } = require('./consumer');
+const createConsumer = require('./consumer');
+const createProducer = require('./producer');
 
-
-module.exports = { createConnection, createStreamManager, createProducer, createConsumer };
+module.exports = { createConsumer, createProducer };
